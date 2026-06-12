@@ -47,7 +47,7 @@ class SearchViewModel {
                         try {
                             parser.search(keyword)
                         } catch (e: Exception) {
-                            errors.add("${parser.siteName}: ${e.message}")
+                            errors.add("${parser.siteName}(${e::class.simpleName}): ${e.message}")
                             emptyList()
                         }
                     }
@@ -56,8 +56,9 @@ class SearchViewModel {
                 .flatten()
 
             _results.value = allResults
-            if (allResults.isEmpty() && errors.isNotEmpty()) {
-                _error.value = errors.joinToString("\n")
+            if (allResults.isEmpty()) {
+                _error.value = if (errors.isNotEmpty()) errors.joinToString("\n")
+                               else "未找到结果"
             }
             _isLoading.value = false
         }

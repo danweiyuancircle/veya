@@ -45,12 +45,15 @@ class XiaobaoParser(private val client: HttpClient) : SiteParser {
     }
 
     private suspend fun fetch(url: String): String {
-        return client.get(url) {
+        println("[WV] fetch: $url")
+        val body = client.get(url) {
             headers {
                 append("User-Agent", "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
                 append("Referer", baseUrl)
             }
         }.bodyAsText()
+        println("[WV] response len=${body.length} preview=${body.take(80)}")
+        return body
     }
 
     private fun parseSearchResults(html: String): List<SearchResult> {
