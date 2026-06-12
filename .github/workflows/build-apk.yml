@@ -1,8 +1,9 @@
-name: Build APK
+name: Build & Release APK
 
 on:
   push:
-    branches: [master, main]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -29,32 +30,52 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew :composeApp:assembleDebug
 
+      - name: Rename APK
+        run: mv composeApp/build/outputs/apk/debug/composeApp-debug.apk watchvideo-${{ github.ref_name }}.apk
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: watchvideo-debug
-          path: composeApp/build/outputs/apk/debug/composeApp-debug.apk
-          retention-days: 7
+          name: watchvideo-${{ github.ref_name }}
+          path: watchvideo-${{ github.ref_name }}.apk
+          retention-days: 30
 
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     permissions:
       contents: write
 
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
       - name: Download APK artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: watchvideo-debug
+          name: watchvideo-${{ github.ref_name }}
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          # 提取当前 tag 对应的 CHANGELOG 段落
+          TAG="${{ github.ref_name }}"
+          NOTES=$(awk "/^## \[?${TAG}\]?/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="详见 [CHANGELOG](https://github.com/danweiyuancircle/watch-video/blob/master/CHANGELOG.md)"
+          fi
+          # 写入多行输出
+          {
+            echo "notes<<EOF"
+            echo "$NOTES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create Release
         uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Build ${{ github.run_number }}
-          body: |
-            自动构建 — commit ${{ github.sha }}
-          files: composeApp-debug.apk
+          name: ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.notes }}
+          files: watchvideo-${{ github.ref_name }}.apk
           make_latest: true
