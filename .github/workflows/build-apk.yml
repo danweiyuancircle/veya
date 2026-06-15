@@ -41,7 +41,14 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           mkdir -p signing
-          echo "$KEYSTORE_BASE64" | base64 --decode > signing/veya-release.jks
+          # 剥离 base64 中可能混入的空白/换行后再解码，避免 secret 带换行导致 jks 损坏
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > signing/veya-release.jks
+          # 校验解码结果是合法 JKS（魔数 FEEDFEED），否则立即失败给出明确提示
+          if [ "$(head -c4 signing/veya-release.jks | xxd -p)" != "feedfeed" ]; then
+            echo "::error::解码后的 keystore 不是合法 JKS（魔数不符）。请重新生成 ANDROID_KEYSTORE_BASE64："
+            echo "::error::  base64 -i signing/veya-release.jks | tr -d '\\n' | pbcopy   （macOS，结果粘到 GitHub secret）"
+            exit 1
+          fi
 
       - name: Build Release APK
         env:
