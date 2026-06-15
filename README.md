@@ -33,6 +33,22 @@
 
 ---
 
+## 应用截图
+
+<div align="center">
+
+| 搜索 | 历史 | 收藏 |
+|:---:|:---:|:---:|
+| <img src="pics/home.jpg" width="240" /> | <img src="pics/history.jpg" width="240" /> | <img src="pics/collection.jpg" width="240" /> |
+
+| 详情播放 | 设置 |
+|:---:|:---:|
+| <img src="pics/detail.jpg" width="240" /> | <img src="pics/settings.jpg" width="240" /> |
+
+</div>
+
+---
+
 ## 支持的数据源
 
 | 站点名称 | 域名 | 解析方式 |
@@ -145,5 +161,20 @@ Long press 2s     — 2× speed, releases back to 1×
 - App Name: `Veya`
 - Android App Icon: `design/app_icon/veya-android-192.png`
 - iOS App Icon Source: `design/app_icon/veya-ios-1024.png`
+
+## Signed Release
+
+- 本地签名配置模板：`keystore.properties.example`
+- 本地实际签名配置：`keystore.properties`
+- 本地签名文件：`signing/veya-release.jks`
+- 本地发布命令：`JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :composeApp:assembleRelease`
+- GitHub Actions 发布产物：签名后的 `release` APK
+
+GitHub Secrets:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
 
 </details>
