@@ -5,13 +5,10 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
-import com.watchvideo.data.createHttpClient
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsChannel
-import io.ktor.http.contentLength
-import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
 
 private const val UPDATE_APK_NAME = "update.apk"
@@ -40,26 +37,39 @@ actual suspend fun installUpdate(apkUrl: String, onProgress: (Float) -> Unit): I
     }
 
 private suspend fun downloadApk(apkUrl: String, onProgress: (Float) -> Unit): Boolean {
-    val client = createHttpClient()
-    try {
-        val response = client.get(apkUrl)
-        val total = response.contentLength() ?: -1L
-        val channel = response.bodyAsChannel()
+    // 用独立 OkHttp 客户端：跟随重定向（GitHub→S3），二进制下载不经 gzip 干扰，
+    // Content-Length 可靠。进度回调切回主线程驱动 Compose 重组。
+    val client = OkHttpClient.Builder().followRedirects(true).followSslRedirects(true).build()
+    val response = client.newCall(Request.Builder().url(apkUrl).build()).execute()
+    response.use { resp ->
+        val body = resp.body ?: return false
+        if (!resp.isSuccessful) return false
+        val total = body.contentLength() // 已是最终重定向后的实体长度
         val buffer = ByteArray(64 * 1024)
         var readTotal = 0L
-        apkFile().outputStream().use { out ->
-            while (!channel.isClosedForRead) {
-                val read = channel.readAvailable(buffer, 0, buffer.size)
-                if (read <= 0) break
-                out.write(buffer, 0, read)
-                readTotal += read
-                onProgress(if (total > 0) readTotal.toFloat() / total else -1f)
+        var lastPct = -1
+        body.byteStream().use { input ->
+            apkFile().outputStream().use { out ->
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    out.write(buffer, 0, read)
+                    readTotal += read
+                    if (total > 0) {
+                        // 节流：百分比整数变化才回调，避免每 64KB 都切主线程拖慢下载
+                        val pct = (readTotal * 100 / total).toInt()
+                        if (pct != lastPct) {
+                            lastPct = pct
+                            withContext(Dispatchers.Main) { onProgress(pct / 100f) }
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) { onProgress(-1f) }
+                    }
+                }
             }
         }
-        onProgress(1f)
+        withContext(Dispatchers.Main) { onProgress(1f) }
         return true
-    } finally {
-        client.close()
     }
 }
 
