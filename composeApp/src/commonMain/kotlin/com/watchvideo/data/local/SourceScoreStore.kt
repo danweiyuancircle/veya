@@ -28,6 +28,10 @@ class SourceScoreStore(
             .thenBy { key -> sourceKeys.indexOf(key) }
     )
 
+    fun clear() {
+        store.write(emptyList())
+    }
+
     fun rankValue(record: SourceScoreRecord?): Double {
         if (record == null) return 0.0
 

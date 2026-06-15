@@ -1,7 +1,5 @@
 package com.watchvideo
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -15,7 +13,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavType
@@ -25,6 +22,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.watchvideo.ui.search.SearchScreen
+import com.watchvideo.ui.history.HistoryScreen
+import com.watchvideo.ui.favorites.FavoritesScreen
 import com.watchvideo.ui.settings.SettingsScreen
 import com.watchvideo.ui.detail.DetailScreen
 import com.watchvideo.ui.theme.VeyaTheme
@@ -87,12 +86,23 @@ fun App() = VeyaTheme {
                 )
             }
             composable("history") {
-                // TODO(Task 7): 替换为 HistoryScreen
-                PlaceholderScreen("历史")
+                HistoryScreen(
+                    onItemClick = { item ->
+                        val siteKey = item.sourceKey
+                        if (siteKey.isBlank()) return@HistoryScreen
+                        val id = item.sourceContentId.ifBlank { item.contentKey }
+                        navController.navigate("detail/$siteKey/$id/${item.title.encodeURLParameter()}")
+                    }
+                )
             }
             composable("favorites") {
-                // TODO(Task 7): 替换为 FavoritesScreen
-                PlaceholderScreen("收藏")
+                FavoritesScreen(
+                    onItemClick = { item ->
+                        val siteKey = item.preferredSourceKey?.ifBlank { null } ?: return@FavoritesScreen
+                        val id = item.sourceContentId?.ifBlank { null } ?: item.contentKey
+                        navController.navigate("detail/$siteKey/$id/${item.title.encodeURLParameter()}")
+                    }
+                )
             }
             composable("settings") {
                 SettingsScreen()
@@ -116,12 +126,5 @@ fun App() = VeyaTheme {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(label: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(label)
     }
 }

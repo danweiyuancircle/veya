@@ -78,6 +78,21 @@ class SourceScoreStoreTest {
         assertEquals(higher, store.get("higher"))
     }
 
+    @Test
+    fun clear_removes_all_records() {
+        val store = SourceScoreStore(
+            settings = FakeSettings(),
+            nowEpochMsProvider = { 1_000L },
+        )
+        store.save(SourceScoreRecord(sourceKey = "a", baseScore = 60))
+        store.save(SourceScoreRecord(sourceKey = "b", baseScore = 70))
+
+        store.clear()
+
+        assertEquals(null, store.get("a"))
+        assertEquals(null, store.get("b"))
+    }
+
     private class FakeSettings : Settings {
         private val data = mutableMapOf<String, Any>()
 

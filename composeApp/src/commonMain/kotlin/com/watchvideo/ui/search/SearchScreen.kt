@@ -1,10 +1,13 @@
 package com.watchvideo.ui.search
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -14,10 +17,35 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import androidx.compose.ui.unit.sp
 import com.watchvideo.data.model.SearchResult
+import com.watchvideo.ui.components.Cover
+import com.watchvideo.ui.theme.SourceTierAvailable
+import com.watchvideo.ui.theme.SourceTierOther
+
+/** 源分级：优先 / 可用 / 其他，颜色与文案在此集中定义 */
+private enum class SourceTier(val label: String, val shortLabel: String) {
+    Priority("优先源", "优先"),
+    Available("可用源", "可用"),
+    Other("其他源", "其他"),
+}
+
+@Composable
+private fun SourceTier.color(): Color = when (this) {
+    SourceTier.Priority -> MaterialTheme.colorScheme.primary
+    SourceTier.Available -> SourceTierAvailable
+    SourceTier.Other -> SourceTierOther
+}
+
+private fun tierOf(rankValue: Double): SourceTier = when {
+    rankValue >= 60.0 -> SourceTier.Priority
+    rankValue > 0.0 -> SourceTier.Available
+    else -> SourceTier.Other
+}
 
 @Composable
 fun SearchScreen(
@@ -31,12 +59,6 @@ fun SearchScreen(
     val history by viewModel.history.collectAsState()
 
     var showHistory by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableStateOf(0) }
-
-    // 结果集变化时把选中 tab 收敛到合法范围
-    LaunchedEffect(groups) {
-        if (selectedTab >= groups.size) selectedTab = 0
-    }
 
     Column(
         modifier = Modifier
@@ -44,38 +66,42 @@ fun SearchScreen(
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = viewModel::onQueryChange,
-                modifier = Modifier
-                    .weight(1f)
-                    .onFocusChanged { showHistory = it.isFocused && groups.isEmpty() },
-                placeholder = { Text("搜索影视...") },
-                singleLine = true
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
+        Text(
+            text = "Veya",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = query,
+            onValueChange = viewModel::onQueryChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { showHistory = it.isFocused && groups.isEmpty() },
+            placeholder = { Text("搜索片名") },
+            singleLine = true,
+            shape = RoundedCornerShape(28.dp),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = {
                 showHistory = false
                 viewModel.search()
-            }) {
-                Text("搜索")
-            }
-        }
+            })
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 
         // 搜索历史覆盖层
         if (showHistory && history.isNotEmpty()) {
             Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("搜索历史", style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                Text(
+                    "搜索历史",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
                 history.forEach { keyword ->
                     Row(
                         modifier = Modifier
@@ -130,27 +156,32 @@ fun SearchScreen(
                 Text(text = error!!, color = MaterialTheme.colorScheme.error)
             }
             groups.isNotEmpty() -> {
-                // 站点 Tab：每个数据源一个 tab，标题带结果数，知道数据从哪来
-                ScrollableTabRow(
-                    selectedTabIndex = selectedTab.coerceIn(0, groups.size - 1),
-                    edgePadding = 0.dp
-                ) {
-                    groups.forEachIndexed { index, group ->
-                        Tab(
-                            selected = index == selectedTab,
-                            onClick = { selectedTab = index },
-                            text = { Text("${group.siteName} (${group.results.size})") }
-                        )
-                    }
+                // 按评分分级（优先/可用/其他），同档归一组；groups 不变不重算
+                val tiered = remember(groups) {
+                    groups
+                        .map { group -> group to tierOf(viewModel.rankValueOf(group.siteKey)) }
+                        .groupBy({ it.second }, { it.first })
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                val current = groups[selectedTab.coerceIn(0, groups.size - 1)]
+
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(current.results) { result ->
-                        SearchResultItem(result = result, onClick = {
-                            showHistory = false
-                            onResultClick(result)
-                        })
+                    SourceTier.entries.forEach { tier ->
+                        val tierGroups = tiered[tier] ?: return@forEach
+                        item(key = "header_${tier.name}") {
+                            TierHeader(tier = tier)
+                        }
+                        tierGroups.forEach { group ->
+                            items(group.results, key = { "${group.siteKey}_${it.id}" }) { result ->
+                                SearchResultItem(
+                                    result = result,
+                                    siteName = group.siteName,
+                                    tier = tier,
+                                    onClick = {
+                                        showHistory = false
+                                        onResultClick(result)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -159,22 +190,70 @@ fun SearchScreen(
 }
 
 @Composable
-private fun SearchResultItem(result: SearchResult, onClick: () -> Unit) {
+private fun TierHeader(tier: SourceTier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(tier.color(), CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = tier.label,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+    }
+}
+
+@Composable
+private fun SearchResultItem(
+    result: SearchResult,
+    siteName: String,
+    tier: SourceTier,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(2.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Row(modifier = Modifier.padding(8.dp)) {
-            AsyncImage(
-                model = result.cover,
-                contentDescription = result.title,
-                modifier = Modifier.size(80.dp, 110.dp),
-                contentScale = ContentScale.Crop
-            )
+        Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Cover(url = result.cover, contentDescription = result.title)
             Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.align(Alignment.CenterVertically)) {
-                Text(text = result.title, style = MaterialTheme.typography.titleMedium)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = result.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "源：$siteName",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
+            Spacer(modifier = Modifier.width(8.dp))
+            TierBadge(tier = tier)
         }
+    }
+}
+
+@Composable
+private fun TierBadge(tier: SourceTier) {
+    Box(
+        modifier = Modifier
+            .background(tier.color(), RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = tier.shortLabel,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+            fontSize = 11.sp
+        )
     }
 }

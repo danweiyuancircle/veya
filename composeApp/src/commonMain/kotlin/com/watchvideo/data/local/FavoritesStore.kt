@@ -25,6 +25,10 @@ class FavoritesStore(
 
     fun isFavorite(contentKey: String): Boolean = list().any { it.contentKey == contentKey }
 
+    fun clear() {
+        store.write(emptyList())
+    }
+
     private companion object {
         const val FAVORITES_KEY = "favorite_items"
     }

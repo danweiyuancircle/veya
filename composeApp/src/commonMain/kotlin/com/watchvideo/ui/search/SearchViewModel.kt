@@ -51,6 +51,9 @@ class SearchViewModel(
     private val _history = MutableStateFlow(loadHistory())
     val history: StateFlow<List<String>> = _history.asStateFlow()
 
+    /** 站点当前评分值，UI 用于分级展示（优先/可用/其他） */
+    fun rankValueOf(siteKey: String): Double = scoreStore.rankValue(scoreStore.get(siteKey))
+
     fun onQueryChange(query: String) {
         _query.value = query
     }
