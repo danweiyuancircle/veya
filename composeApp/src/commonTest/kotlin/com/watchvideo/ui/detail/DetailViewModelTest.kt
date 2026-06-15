@@ -109,6 +109,23 @@ class DetailViewModelTest {
     }
 
     @Test
+    fun blank_parsed_title_falls_back_to_navigation_title() = runTest {
+        // 部分 HTML 源 detail 解析不到标题（title 空）；应回退用搜索/历史带入的 title。
+        val settings = InMemorySettings()
+        val viewModel = buildViewModel(
+            scope = this,
+            settings = settings,
+            historyStore = WatchHistoryStore(settings),
+            parser = BlankTitleFakeSiteParser(),
+        )
+
+        viewModel.loadDetail(siteKey = "bingqi", id = "12345", title = "庆余年 第二季")
+        advanceUntilIdle()
+
+        assertEquals("庆余年 第二季", viewModel.detail.value?.title)
+    }
+
+    @Test
     fun toggle_favorite_persists_to_store() = runTest {
         val settings = InMemorySettings()
         val favoritesStore = FavoritesStore(settings)
@@ -267,6 +284,38 @@ class DetailViewModelTest {
             routeKey = "route-1",
             episodeKey = playPageUrl,
             title = "播放中",
+            streamUrl = "http://localhost/$playPageUrl.m3u8",
+            headers = emptyMap(),
+        )
+    }
+
+    /** 模拟 HTML 源 detail 解析不到标题：title 为空。 */
+    private class BlankTitleFakeSiteParser : SiteParser {
+        override val siteKey: String = "bingqi"
+        override val siteName: String = "秉奇影视"
+        override val baseUrl: String = "http://localhost"
+
+        override suspend fun search(keyword: String): List<SourceSearchItem> = emptyList()
+
+        override suspend fun detail(id: String): SourceDetail = SourceDetail(
+            sourceKey = siteKey,
+            sourceName = siteName,
+            contentKey = "$siteKey:$id",
+            sourceContentId = id,
+            title = "",
+            coverUrl = null,
+            summary = null,
+            metadata = emptyList<MetaBadge>(),
+            routes = listOf(
+                PlaybackRoute("route-1", "线路1", listOf(PlaybackEpisode("ep-1", "第1集", "ep-1"))),
+            ),
+        )
+
+        override suspend fun playInfo(playPageUrl: String): PlaybackCandidate = PlaybackCandidate(
+            sourceKey = siteKey,
+            routeKey = "route-1",
+            episodeKey = playPageUrl,
+            title = "",
             streamUrl = "http://localhost/$playPageUrl.m3u8",
             headers = emptyMap(),
         )

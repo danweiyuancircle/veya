@@ -40,13 +40,34 @@ class BingqiParser(private val client: HttpClient) : SiteParser {
             sourceName = siteName,
             contentKey = buildContentKey(id),
             sourceContentId = id,
-            title = "",
-            coverUrl = null,
-            summary = null,
+            title = parseTitle(html),
+            coverUrl = parseCover(html),
+            summary = parseSummary(html),
             metadata = emptyList(),
             routes = parseRoutes(html),
         )
     }
+
+    /** 标题：优先 og:title，回退 <h1>，再回退 <title>（去站点后缀）。 */
+    private fun parseTitle(html: String): String {
+        Regex("""<meta\s+property="og:title"\s+content="([^"]+)"""").find(html)
+            ?.let { return it.groupValues[1].trim() }
+        Regex("""<h1[^>]*>([^<]+)</h1>""").find(html)
+            ?.let { return it.groupValues[1].trim() }
+        return Regex("""<title>([^<|_-]+)""").find(html)?.groupValues?.get(1)?.trim().orEmpty()
+    }
+
+    /** 封面：优先 og:image，回退详情页内首个 data-original 图。补全相对路径。 */
+    private fun parseCover(html: String): String? {
+        val raw = Regex("""<meta\s+property="og:image"\s+content="([^"]+)"""").find(html)?.groupValues?.get(1)
+            ?: Regex("""data-original="([^"]+\.(?:jpg|png|webp|jpeg))"""").find(html)?.groupValues?.get(1)
+            ?: return null
+        return if (raw.startsWith("http")) raw else "$baseUrl$raw"
+    }
+
+    /** 简介：og:description（可空）。 */
+    private fun parseSummary(html: String): String? =
+        Regex("""<meta\s+property="og:description"\s+content="([^"]+)"""").find(html)?.groupValues?.get(1)?.trim()
 
     override suspend fun playInfo(playPageUrl: String): PlaybackCandidate {
         val html = fetch(playPageUrl)

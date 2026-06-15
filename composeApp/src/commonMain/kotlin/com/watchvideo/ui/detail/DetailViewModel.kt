@@ -68,7 +68,13 @@ class DetailViewModel(
             try {
                 // 第一版仅加载当前源；全源聚合见 DONE_WITH_CONCERNS。
                 val sourceDetail = parserLookup(siteKey).detail(id)
-                val aggregated = aggregatedDetailService.merge(listOf(sourceDetail))
+                val merged = aggregatedDetailService.merge(listOf(sourceDetail))
+                // 解析不到标题时（如部分 HTML 源），用从搜索/历史带入的 title 兜底
+                val aggregated = if (merged.title.isBlank() && title.isNotBlank()) {
+                    merged.copy(title = title)
+                } else {
+                    merged
+                }
                 _detail.value = aggregated
                 // 收藏 key 统一用聚合后的 contentKey（带 siteKey 前缀），与 toggleFavorite 一致
                 contentKey = aggregated.contentKey
