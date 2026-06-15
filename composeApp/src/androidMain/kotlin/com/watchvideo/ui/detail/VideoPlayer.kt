@@ -65,10 +65,16 @@ fun VideoPlayer(
     // ExoPlayer
     val exoPlayer = remember { ExoPlayer.Builder(context).build() }
     val latestOnResolutionObserved by rememberUpdatedState(onResolutionObserved)
+    // 网络缓冲状态：STATE_BUFFERING 时显示加载转圈
+    var isBuffering by remember { mutableStateOf(false) }
     DisposableEffect(exoPlayer) {
         val listener = object : Player.Listener {
             override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
                 if (videoSize.height > 0) latestOnResolutionObserved(videoSize.height)
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                isBuffering = playbackState == Player.STATE_BUFFERING
             }
         }
         exoPlayer.addListener(listener)
@@ -147,6 +153,16 @@ fun VideoPlayer(
             },
             modifier = Modifier.fillMaxSize()
         )
+
+        // 网络缓冲转圈，覆盖在画面中央
+        if (isBuffering) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color.White)
+            }
+        }
 
         // 手势层：单一状态机，三种手势互斥
         Box(
