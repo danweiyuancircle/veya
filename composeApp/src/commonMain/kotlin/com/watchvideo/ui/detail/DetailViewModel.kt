@@ -9,11 +9,12 @@ import com.watchvideo.data.local.SourceScoreStore
 import com.watchvideo.data.local.WatchHistoryStore
 import com.watchvideo.data.model.AggregatedDetail
 import com.watchvideo.data.model.FavoriteItem
-import com.watchvideo.data.model.PlaybackCandidate
 import com.watchvideo.data.model.PlaybackEpisode
 import com.watchvideo.data.model.SourceDetail
 import com.watchvideo.data.model.WatchHistoryItem
 import com.watchvideo.platformEpochMs
+import com.watchvideo.ui.theme.SourceTier
+import com.watchvideo.ui.theme.tierOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -262,14 +263,5 @@ class DetailViewModel(
     }
 
     /** 源 tier 分级，供 UI chip 标签/配色用。 */
-    fun sourceTier(sourceKey: String): SourceTier {
-        val value = scoreStore.rankValue(scoreStore.get(sourceKey))
-        return when {
-            value >= 60.0 -> SourceTier.PREFERRED
-            value > 0.0 -> SourceTier.AVAILABLE
-            else -> SourceTier.OTHER
-        }
-    }
+    fun sourceTier(sourceKey: String): SourceTier = tierOf(scoreStore.rankValue(scoreStore.get(sourceKey)))
 }
-
-enum class SourceTier { PREFERRED, AVAILABLE, OTHER }

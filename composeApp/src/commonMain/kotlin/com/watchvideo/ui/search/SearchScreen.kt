@@ -24,28 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.watchvideo.data.model.SearchResult
 import com.watchvideo.ui.components.Cover
-import com.watchvideo.ui.theme.SourceTierAvailable
-import com.watchvideo.ui.theme.SourceTierOther
-
-/** 源分级：优先 / 可用 / 其他，颜色与文案在此集中定义 */
-private enum class SourceTier(val label: String, val shortLabel: String) {
-    Priority("优先源", "优先"),
-    Available("可用源", "可用"),
-    Other("其他源", "其他"),
-}
-
-@Composable
-private fun SourceTier.color(): Color = when (this) {
-    SourceTier.Priority -> MaterialTheme.colorScheme.primary
-    SourceTier.Available -> SourceTierAvailable
-    SourceTier.Other -> SourceTierOther
-}
-
-private fun tierOf(rankValue: Double): SourceTier = when {
-    rankValue >= 60.0 -> SourceTier.Priority
-    rankValue > 0.0 -> SourceTier.Available
-    else -> SourceTier.Other
-}
+import com.watchvideo.ui.theme.SourceTier
+import com.watchvideo.ui.theme.color
+import com.watchvideo.ui.theme.tierOf
 
 @Composable
 fun SearchScreen(

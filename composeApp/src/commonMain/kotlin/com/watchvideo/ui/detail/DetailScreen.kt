@@ -30,8 +30,8 @@ import com.watchvideo.data.local.SourceScoreStore
 import com.watchvideo.data.local.WatchHistoryStore
 import com.watchvideo.data.model.AggregatedDetail
 import com.watchvideo.platformEpochMs
-import com.watchvideo.ui.theme.SourceTierAvailable
-import com.watchvideo.ui.theme.SourceTierOther
+import com.watchvideo.ui.theme.SourceTier
+import com.watchvideo.ui.theme.color
 
 @Composable
 fun DetailScreen(
@@ -345,16 +345,8 @@ private fun SourceChip(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val tierColor = when (tier) {
-        SourceTier.PREFERRED -> MaterialTheme.colorScheme.primary
-        SourceTier.AVAILABLE -> SourceTierAvailable
-        SourceTier.OTHER -> SourceTierOther
-    }
-    val tierLabel = when (tier) {
-        SourceTier.PREFERRED -> "优先"
-        SourceTier.AVAILABLE -> "可用"
-        SourceTier.OTHER -> "其他"
-    }
+    val tierColor = tier.color()
+    val tierLabel = tier.shortLabel
     val border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
     else BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     Surface(

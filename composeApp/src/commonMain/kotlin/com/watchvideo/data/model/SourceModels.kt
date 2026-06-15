@@ -67,23 +67,3 @@ fun SourceSearchItem.toLegacySearchResult(): SearchResult = SearchResult(
     cover = coverUrl.orEmpty(),
     siteKey = sourceKey,
 )
-
-fun PlaybackEpisode.toLegacyEpisode(): Episode = Episode(
-    name = episodeLabel,
-    playUrl = playPageUrl,
-)
-
-fun PlaybackRoute.toLegacyRoute(): Route = Route(
-    name = routeName,
-    episodes = episodes.map { it.toLegacyEpisode() },
-)
-
-fun SourceDetail.toLegacyRoutes(): List<Route> = routes.map { it.toLegacyRoute() }
-
-fun PlaybackCandidate.toLegacyPlayInfo(): PlayInfo = PlayInfo(
-    m3u8Url = streamUrl,
-    title = title,
-    routeKey = routeKey,
-    episodeKey = episodeKey,
-    headers = headers,
-)
