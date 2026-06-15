@@ -79,6 +79,51 @@ class SourceScoreStoreTest {
     }
 
     @Test
+    fun stable_playback_resolution_updates_score_record() {
+        val store = SourceScoreStore(
+            settings = FakeSettings(),
+            nowEpochMsProvider = { 0L },
+        )
+
+        store.recordPlaybackResolution(sourceKey = "modu", firstFrameMs = 1200, stableHeight = 1080)
+
+        val record = store.get("modu")!!
+        assertEquals(1080, record.stableObservedHeight)
+        assertEquals(1200, record.avgFirstFrameMs)
+        assertEquals(1080, record.maxObservedHeight)
+    }
+
+    @Test
+    fun zero_first_frame_ms_does_not_overwrite_existing_avg() {
+        val store = SourceScoreStore(
+            settings = FakeSettings(),
+            nowEpochMsProvider = { 0L },
+        )
+        store.recordPlaybackResolution(sourceKey = "modu", firstFrameMs = 1500, stableHeight = 1080)
+
+        store.recordPlaybackResolution(sourceKey = "modu", firstFrameMs = 0, stableHeight = 720)
+
+        val record = store.get("modu")!!
+        assertEquals(1500, record.avgFirstFrameMs, "firstFrameMs=0 不应覆盖已有 avgFirstFrameMs")
+        assertEquals(720, record.stableObservedHeight)
+    }
+
+    @Test
+    fun max_observed_height_retains_highest_value() {
+        val store = SourceScoreStore(
+            settings = FakeSettings(),
+            nowEpochMsProvider = { 0L },
+        )
+        store.recordPlaybackResolution(sourceKey = "modu", firstFrameMs = 1000, stableHeight = 1080)
+
+        store.recordPlaybackResolution(sourceKey = "modu", firstFrameMs = 1200, stableHeight = 720)
+
+        val record = store.get("modu")!!
+        assertEquals(720, record.stableObservedHeight, "stableObservedHeight 应更新为最新值")
+        assertEquals(1080, record.maxObservedHeight, "maxObservedHeight 应保留历史最高值")
+    }
+
+    @Test
     fun clear_removes_all_records() {
         val store = SourceScoreStore(
             settings = FakeSettings(),

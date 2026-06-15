@@ -220,6 +220,19 @@ class DetailViewModel(
         ?.routes?.firstOrNull { it.routeKey == routeKey }
         ?.episodes?.firstOrNull { it.episodeKey == episodeKey }
 
+    /**
+     * 播放器回填真实分辨率（Task 6）。仅在 Playing 态生效：更新角标显示的 resolutionHeight，
+     * 并把真实 height 写入评分库的清晰度维度。
+     */
+    fun onResolutionObserved(height: Int) {
+        if (height <= 0) return
+        val playing = _state.value as? DetailPlaybackState.Playing ?: return
+        if (playing.resolutionHeight == height) return   // 幂等：同分辨率不重复回填
+        _state.value = playing.copy(resolutionHeight = height)
+        // firstFrameMs 暂无真实测量值，传占位 0（见 DONE_WITH_CONCERNS）。
+        scoreStore.recordPlaybackResolution(playing.sourceKey, firstFrameMs = 0, stableHeight = height)
+    }
+
     fun setAutoSelectSource(enabled: Boolean) {
         _autoSelectSource.value = enabled
     }

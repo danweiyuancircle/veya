@@ -19,6 +19,7 @@ actual fun VideoPlayerArea(
     onBack: () -> Unit,
     onPrevEpisode: (() -> Unit)?,
     onNextEpisode: (() -> Unit)?,
+    onResolutionObserved: (Int) -> Unit,
     modifier: Modifier
 ) {
     Box(

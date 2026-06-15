@@ -95,6 +95,7 @@ fun DetailScreen(
                 onBack = onBack,
                 onPrevEpisode = onPrev,
                 onNextEpisode = onNext,
+                onResolutionObserved = viewModel::onResolutionObserved,
                 modifier = if (isFullscreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth(),
             )
             if (resolutionHeight != null) {
@@ -444,5 +445,6 @@ expect fun VideoPlayerArea(
     onBack: () -> Unit,
     onPrevEpisode: (() -> Unit)?,
     onNextEpisode: (() -> Unit)?,
+    onResolutionObserved: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 )

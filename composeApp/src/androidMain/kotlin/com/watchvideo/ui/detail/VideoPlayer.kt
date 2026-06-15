@@ -55,6 +55,7 @@ fun VideoPlayer(
     onBack: () -> Unit,
     onPrevEpisode: (() -> Unit)?,
     onNextEpisode: (() -> Unit)?,
+    onResolutionObserved: (Int) -> Unit,
     modifier: Modifier
 ) {
     val context = LocalContext.current
@@ -63,7 +64,19 @@ fun VideoPlayer(
 
     // ExoPlayer
     val exoPlayer = remember { ExoPlayer.Builder(context).build() }
-    DisposableEffect(Unit) { onDispose { exoPlayer.release() } }
+    val latestOnResolutionObserved by rememberUpdatedState(onResolutionObserved)
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+                if (videoSize.height > 0) latestOnResolutionObserved(videoSize.height)
+            }
+        }
+        exoPlayer.addListener(listener)
+        onDispose {
+            exoPlayer.removeListener(listener)
+            exoPlayer.release()
+        }
+    }
 
     // 当 m3u8Url 变化时换源
     LaunchedEffect(m3u8Url) {

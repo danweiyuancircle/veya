@@ -12,6 +12,7 @@ actual fun VideoPlayerArea(
     onBack: () -> Unit,
     onPrevEpisode: (() -> Unit)?,
     onNextEpisode: (() -> Unit)?,
+    onResolutionObserved: (Int) -> Unit,
     modifier: Modifier
 ) {
     VideoPlayer(
@@ -22,6 +23,7 @@ actual fun VideoPlayerArea(
         onBack = onBack,
         onPrevEpisode = onPrevEpisode,
         onNextEpisode = onNextEpisode,
+        onResolutionObserved = onResolutionObserved,
         modifier = modifier
     )
 }

@@ -23,6 +23,19 @@ class SourceScoreStore(
         persist(updated.values.toList())
     }
 
+    fun recordPlaybackResolution(sourceKey: String, firstFrameMs: Long, stableHeight: Int) {
+        val current = get(sourceKey) ?: SourceScoreRecord(sourceKey = sourceKey)
+        save(
+            current.copy(
+                avgFirstFrameMs = if (firstFrameMs > 0) firstFrameMs else current.avgFirstFrameMs,
+                stableObservedHeight = stableHeight,
+                maxObservedHeight = max(current.maxObservedHeight ?: 0, stableHeight),
+                playbackStartSuccessCount = current.playbackStartSuccessCount + 1,
+                consecutiveFailureCount = 0,
+            )
+        )
+    }
+
     fun rank(sourceKeys: List<String>): List<String> = sourceKeys.sortedWith(
         compareByDescending<String> { key -> rankValue(records()[key]) }
             .thenBy { key -> sourceKeys.indexOf(key) }
