@@ -32,8 +32,10 @@ import com.watchvideo.ui.settings.SettingsScreen
 import com.watchvideo.ui.detail.DetailScreen
 import com.watchvideo.ui.theme.VeyaTheme
 import com.watchvideo.ui.update.UpdateDialog
+import com.watchvideo.ui.image.buildImageLoader
 import com.watchvideo.data.update.UpdateChecker
 import com.watchvideo.data.update.UpdateInfo
+import coil3.compose.setSingletonImageLoaderFactory
 import io.ktor.http.encodeURLParameter
 import io.ktor.http.decodeURLPart
 
@@ -48,6 +50,9 @@ private val tabs = listOf(
 
 @Composable
 fun App() = VeyaTheme {
+    // 配置全局图片加载器：内存+磁盘缓存，避免封面实时加载失败/重复请求
+    setSingletonImageLoaderFactory { context -> buildImageLoader(context) }
+
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
