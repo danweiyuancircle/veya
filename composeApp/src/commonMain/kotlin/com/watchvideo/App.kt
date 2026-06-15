@@ -1,7 +1,11 @@
 package com.watchvideo
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -11,6 +15,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavType
@@ -22,6 +27,7 @@ import androidx.navigation.navArgument
 import com.watchvideo.ui.search.SearchScreen
 import com.watchvideo.ui.settings.SettingsScreen
 import com.watchvideo.ui.detail.DetailScreen
+import com.watchvideo.ui.theme.VeyaTheme
 import io.ktor.http.encodeURLParameter
 import io.ktor.http.decodeURLPart
 
@@ -29,11 +35,13 @@ private data class TabItem(val route: String, val label: String, val icon: Image
 
 private val tabs = listOf(
     TabItem("search", "搜索", Icons.Default.Search),
+    TabItem("history", "历史", Icons.Default.History),
+    TabItem("favorites", "收藏", Icons.Default.Favorite),
     TabItem("settings", "设置", Icons.Default.Settings)
 )
 
 @Composable
-fun App() {
+fun App() = VeyaTheme {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -78,6 +86,14 @@ fun App() {
                     }
                 )
             }
+            composable("history") {
+                // TODO(Task 7): 替换为 HistoryScreen
+                PlaceholderScreen("历史")
+            }
+            composable("favorites") {
+                // TODO(Task 7): 替换为 FavoritesScreen
+                PlaceholderScreen("收藏")
+            }
             composable("settings") {
                 SettingsScreen()
             }
@@ -100,5 +116,12 @@ fun App() {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PlaceholderScreen(label: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(label)
     }
 }
