@@ -61,13 +61,14 @@ class DetailViewModel(
             _state.value = DetailPlaybackState.LoadingDetail
             _streamUrl.value = null
             tried.clear()
-            contentKey = id
-            _isFavorite.value = favoritesStore.isFavorite(id)
             try {
                 // 第一版仅加载当前源；全源聚合见 DONE_WITH_CONCERNS。
                 val sourceDetail = parserLookup(siteKey).detail(id)
                 val aggregated = aggregatedDetailService.merge(listOf(sourceDetail))
                 detail = aggregated
+                // 收藏 key 统一用聚合后的 contentKey（带 siteKey 前缀），与 toggleFavorite 一致
+                contentKey = aggregated.contentKey
+                _isFavorite.value = favoritesStore.isFavorite(aggregated.contentKey)
                 val ready = readyFromHistoryOrDefault(aggregated, title)
                 currentSelectedSourceKey = ready.selectedSourceKey
                 _state.value = ready

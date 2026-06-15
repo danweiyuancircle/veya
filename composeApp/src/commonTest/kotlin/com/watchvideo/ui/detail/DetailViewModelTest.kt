@@ -105,6 +105,27 @@ class DetailViewModelTest {
     }
 
     @Test
+    fun favorite_state_survives_reload_when_content_key_has_source_prefix() = runTest {
+        // 真实 parser 的 contentKey 带 siteKey 前缀（"modu:hero-2026"）；
+        // 回归:收藏后重新 loadDetail，isFavorite 必须仍为 true（曾因初始判断用裸 id 而恒 false）。
+        val settings = InMemorySettings()
+        val favoritesStore = FavoritesStore(settings)
+        val parser = PrefixedFakeSiteParser()
+        val first = buildViewModel(scope = this, settings = settings, favoritesStore = favoritesStore, parser = parser)
+
+        first.loadDetail(siteKey = "modu", id = "hero-2026", title = "英雄2026")
+        advanceUntilIdle()
+        first.toggleFavorite()
+        assertTrue(first.isFavorite.value)
+        assertTrue(favoritesStore.isFavorite("modu:hero-2026"))
+
+        val second = buildViewModel(scope = this, settings = settings, favoritesStore = favoritesStore, parser = parser)
+        second.loadDetail(siteKey = "modu", id = "hero-2026", title = "英雄2026")
+        advanceUntilIdle()
+        assertTrue(second.isFavorite.value)
+    }
+
+    @Test
     fun select_route_during_playing_state_transitions_to_ready_with_new_route() = runTest {
         val settings = InMemorySettings()
         val viewModel = buildViewModel(
@@ -190,6 +211,42 @@ class DetailViewModelTest {
             title = "播放中",
             streamUrl = "http://localhost/$playPageUrl.m3u8",
             headers = mapOf("Referer" to baseUrl),
+        )
+    }
+
+    /** 模拟真实 parser：contentKey 带 "siteKey:" 前缀。 */
+    private class PrefixedFakeSiteParser : SiteParser {
+        override val siteKey: String = "modu"
+        override val siteName: String = "模板影视"
+        override val baseUrl: String = "http://localhost"
+
+        override suspend fun search(keyword: String): List<SourceSearchItem> = emptyList()
+
+        override suspend fun detail(id: String): SourceDetail = SourceDetail(
+            sourceKey = siteKey,
+            sourceName = siteName,
+            contentKey = "$siteKey:$id",
+            sourceContentId = id,
+            title = "英雄2026",
+            coverUrl = null,
+            summary = null,
+            metadata = emptyList<MetaBadge>(),
+            routes = listOf(
+                PlaybackRoute(
+                    routeKey = "route-1",
+                    routeName = "线路1",
+                    episodes = listOf(PlaybackEpisode("ep-1", "第1集", "ep-1")),
+                ),
+            ),
+        )
+
+        override suspend fun playInfo(playPageUrl: String): PlaybackCandidate = PlaybackCandidate(
+            sourceKey = siteKey,
+            routeKey = "route-1",
+            episodeKey = playPageUrl,
+            title = "播放中",
+            streamUrl = "http://localhost/$playPageUrl.m3u8",
+            headers = emptyMap(),
         )
     }
 
