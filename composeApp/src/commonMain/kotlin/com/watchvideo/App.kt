@@ -12,7 +12,11 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavType
@@ -27,6 +31,9 @@ import com.watchvideo.ui.favorites.FavoritesScreen
 import com.watchvideo.ui.settings.SettingsScreen
 import com.watchvideo.ui.detail.DetailScreen
 import com.watchvideo.ui.theme.VeyaTheme
+import com.watchvideo.ui.update.UpdateDialog
+import com.watchvideo.data.update.UpdateChecker
+import com.watchvideo.data.update.UpdateInfo
 import io.ktor.http.encodeURLParameter
 import io.ktor.http.decodeURLPart
 
@@ -44,6 +51,12 @@ fun App() = VeyaTheme {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+
+    // 启动自动检查更新，有新版弹框；失败静默不打扰
+    var startupUpdate by remember { mutableStateOf<UpdateInfo?>(null) }
+    LaunchedEffect(Unit) {
+        startupUpdate = UpdateChecker().checkLatest(currentAppVersion())
+    }
 
     // 底部导航仅在顶层 Tab 目的地显示，详情页全屏无底栏
     val showBottomBar = currentRoute in tabs.map { it.route }
@@ -126,5 +139,9 @@ fun App() = VeyaTheme {
                 )
             }
         }
+    }
+
+    startupUpdate?.let { info ->
+        UpdateDialog(info = info, onDismiss = { startupUpdate = null })
     }
 }
