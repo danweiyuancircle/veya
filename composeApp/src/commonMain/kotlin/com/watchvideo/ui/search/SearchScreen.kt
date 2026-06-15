@@ -30,7 +30,7 @@ import com.watchvideo.ui.theme.tierOf
 
 @Composable
 fun SearchScreen(
-    viewModel: SearchViewModel = remember { SearchViewModel() },
+    viewModel: SearchViewModel = SearchViewModelHolder.instance,
     onResultClick: (SearchResult) -> Unit
 ) {
     val query by viewModel.query.collectAsState()

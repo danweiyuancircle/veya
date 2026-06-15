@@ -115,3 +115,8 @@ class SearchViewModel(
         val historySerializer = ListSerializer(String.serializer())
     }
 }
+
+/** 进程级单例，使搜索结果在底部 tab 切换后仍保留（离开 search 页不销毁状态）。 */
+object SearchViewModelHolder {
+    val instance: SearchViewModel by lazy { SearchViewModel() }
+}
