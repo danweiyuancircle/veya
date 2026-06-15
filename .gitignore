@@ -3,4 +3,8 @@
 build/
 *.iml
 local.properties
+keystore.properties
+*.jks
+*.keystore
+signing/
 .kotlin/
