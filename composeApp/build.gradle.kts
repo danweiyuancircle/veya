@@ -114,6 +114,15 @@ android {
         }
     }
 
+    // APK 输出命名：veya-{versionName}-{buildType}.apk
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            output.outputFileName = "veya-${variant.versionName}-${variant.buildType.name}.apk"
+        }
+    }
+
     buildFeatures {
         buildConfig = true
     }
