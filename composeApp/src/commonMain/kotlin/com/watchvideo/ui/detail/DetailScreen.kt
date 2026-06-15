@@ -58,16 +58,12 @@ fun DetailScreen(
     val streamUrl by viewModel.streamUrl.collectAsState()
     val isFavorite by viewModel.isFavorite.collectAsState()
     val autoSelectSource by viewModel.autoSelectSource.collectAsState()
+    val detail by viewModel.detail.collectAsState()
     var isFullscreen by remember { mutableStateOf(false) }
 
-    // 播放态（Resolving/Buffering/Playing/Recovering）不携带 detail，保留上一个 Ready 的详情用于渲染。
-    var lastReady by remember { mutableStateOf<DetailPlaybackState.Ready?>(null) }
-    LaunchedEffect(state) {
-        if (state is DetailPlaybackState.Ready) lastReady = state as DetailPlaybackState.Ready
-    }
-
-    // 当前选中三元组：Ready 直接取；播放态用其 keys 覆盖到 lastReady 的 detail 上。
-    val selection = currentSelection(state, lastReady)
+    // 当前选中三元组：从稳定的 detail + 当前状态的选中 keys 推导，
+    // 不依赖捕获瞬态 Ready，避免自动播放跳过 Ready 后选集区不渲染。
+    val selection = currentSelection(state, detail)
 
     val resolutionHeight = (state as? DetailPlaybackState.Playing)?.resolutionHeight
 
@@ -161,21 +157,21 @@ private class Selection(
 
 private fun currentSelection(
     state: DetailPlaybackState,
-    lastReady: DetailPlaybackState.Ready?,
+    detail: AggregatedDetail?,
 ): Selection? {
+    val aggregated = detail ?: return null
     val keys: SelectionKeys = when (state) {
         is DetailPlaybackState.Ready ->
-            SelectionKeys(state.detail, state.selectedSourceKey, state.selectedRouteKey, state.selectedEpisodeKey)
+            SelectionKeys(aggregated, state.selectedSourceKey, state.selectedRouteKey, state.selectedEpisodeKey)
         is DetailPlaybackState.ResolvingStream ->
-            lastReady?.detail?.let { SelectionKeys(it, state.sourceKey, state.routeKey, state.episodeKey) }
+            SelectionKeys(aggregated, state.sourceKey, state.routeKey, state.episodeKey)
         is DetailPlaybackState.Buffering ->
-            lastReady?.detail?.let { SelectionKeys(it, state.sourceKey, state.routeKey, state.episodeKey) }
+            SelectionKeys(aggregated, state.sourceKey, state.routeKey, state.episodeKey)
         is DetailPlaybackState.Playing ->
-            lastReady?.detail?.let { SelectionKeys(it, state.sourceKey, state.routeKey, state.episodeKey) }
+            SelectionKeys(aggregated, state.sourceKey, state.routeKey, state.episodeKey)
         is DetailPlaybackState.Recovering ->
-            lastReady?.let {
-                SelectionKeys(it.detail, it.selectedSourceKey, it.selectedRouteKey, it.selectedEpisodeKey)
-            }
+            // 恢复中：保留聚合详情，选中三元组留空（下一候选确定后会进入具体播放态）
+            SelectionKeys(aggregated, aggregated.sourceDetails.first().sourceKey, null, null)
         else -> null
     } ?: return null
     val detail = keys.detail

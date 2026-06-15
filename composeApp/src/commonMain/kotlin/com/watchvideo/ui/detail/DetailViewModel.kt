@@ -52,8 +52,11 @@ class DetailViewModel(
     private val _autoSelectSource = MutableStateFlow(true)
     val autoSelectSource: StateFlow<Boolean> = _autoSelectSource.asStateFlow()
 
+    /** 聚合详情，稳定数据；UI 据此渲染源/线路/选集，不依赖捕获瞬态 Ready。 */
+    private val _detail = MutableStateFlow<AggregatedDetail?>(null)
+    val detail: StateFlow<AggregatedDetail?> = _detail.asStateFlow()
+
     private var contentKey: String = ""
-    private var detail: AggregatedDetail? = null
     private var currentSelectedSourceKey: String? = null
     private val tried = mutableSetOf<Triple<String, String, String>>()
 
@@ -66,7 +69,7 @@ class DetailViewModel(
                 // 第一版仅加载当前源；全源聚合见 DONE_WITH_CONCERNS。
                 val sourceDetail = parserLookup(siteKey).detail(id)
                 val aggregated = aggregatedDetailService.merge(listOf(sourceDetail))
-                detail = aggregated
+                _detail.value = aggregated
                 // 收藏 key 统一用聚合后的 contentKey（带 siteKey 前缀），与 toggleFavorite 一致
                 contentKey = aggregated.contentKey
                 _isFavorite.value = favoritesStore.isFavorite(aggregated.contentKey)
@@ -112,7 +115,7 @@ class DetailViewModel(
     }
 
     fun selectSource(sourceKey: String) {
-        val aggregated = detail ?: return
+        val aggregated = _detail.value ?: return
         val source = aggregated.sourceDetails.firstOrNull { it.sourceKey == sourceKey } ?: return
         val firstRoute = source.routes.firstOrNull()
         currentSelectedSourceKey = sourceKey
@@ -125,7 +128,7 @@ class DetailViewModel(
     }
 
     fun selectRoute(routeKey: String) {
-        val aggregated = detail ?: return
+        val aggregated = _detail.value ?: return
         // 无论当前处于哪种播放态（Playing/Buffering/ResolvingStream/Recovering/Ready），
         // 都用 currentSelectedSourceKey 推导，避免非 Ready 态时操作被丢弃。
         val sourceKey = currentSelectedSourceKey ?: return
@@ -140,7 +143,7 @@ class DetailViewModel(
     }
 
     fun selectEpisode(sourceKey: String, routeKey: String, episodeKey: String) {
-        val aggregated = detail ?: return
+        val aggregated = _detail.value ?: return
         scope.launch { resolveAndPlay(aggregated, sourceKey, routeKey, episodeKey) }
     }
 
@@ -246,7 +249,7 @@ class DetailViewModel(
     }
 
     fun toggleFavorite() {
-        val aggregated = detail
+        val aggregated = _detail.value
         val key = aggregated?.contentKey ?: contentKey
         if (key.isEmpty()) return
         if (favoritesStore.isFavorite(key)) {

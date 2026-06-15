@@ -88,6 +88,27 @@ class DetailViewModelTest {
     }
 
     @Test
+    fun detail_stays_available_after_auto_play_so_ui_can_render_episodes() = runTest {
+        // 回归:自动播放使状态从 Ready 瞬态进入 Playing；detail 必须仍可用，
+        // 否则详情页选集/线路区不渲染（只剩播放器）。
+        val settings = InMemorySettings()
+        val viewModel = buildViewModel(
+            scope = this,
+            settings = settings,
+            historyStore = WatchHistoryStore(settings),
+            parser = FakeSiteParser(),
+        )
+
+        viewModel.loadDetail(siteKey = "modu", id = "hero-2026", title = "英雄2026")
+        advanceUntilIdle()
+
+        assertIs<DetailPlaybackState.Playing>(viewModel.state.value)
+        val detail = viewModel.detail.value
+        assertNotNull(detail)
+        assertTrue(detail.sourceDetails.isNotEmpty())
+    }
+
+    @Test
     fun toggle_favorite_persists_to_store() = runTest {
         val settings = InMemorySettings()
         val favoritesStore = FavoritesStore(settings)
