@@ -78,7 +78,7 @@ jobs:
             found {print}
           ' CHANGELOG.md)
           if [ -z "$NOTES" ]; then
-            NOTES="详见 [CHANGELOG](https://github.com/danweiyuancircle/watch-video/blob/master/CHANGELOG.md)"
+            NOTES="详见 [CHANGELOG](https://github.com/danweiyuancircle/veya/blob/master/CHANGELOG.md)"
           fi
           # 用随机 delimiter 防止 heredoc 注入
           DELIM="EOF_$(openssl rand -hex 16)"

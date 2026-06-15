@@ -6,9 +6,9 @@
 
 *Veya · 免费、无广告的视频聚合播放器*
 
-[![Build APK](https://github.com/danweiyuancircle/watch-video/actions/workflows/build-apk.yml/badge.svg)](https://github.com/danweiyuancircle/watch-video/actions/workflows/build-apk.yml)
-[![Release](https://img.shields.io/github/v/release/danweiyuancircle/watch-video?label=latest%20APK)](https://github.com/danweiyuancircle/watch-video/releases/latest)
-[![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)](https://github.com/danweiyuancircle/watch-video/releases/latest)
+[![Build APK](https://github.com/danweiyuancircle/veya/actions/workflows/build-apk.yml/badge.svg)](https://github.com/danweiyuancircle/veya/actions/workflows/build-apk.yml)
+[![Release](https://img.shields.io/github/v/release/danweiyuancircle/veya?label=latest%20APK)](https://github.com/danweiyuancircle/veya/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)](https://github.com/danweiyuancircle/veya/releases/latest)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 
 </div>
@@ -21,13 +21,13 @@
 
 本 App 不存储、不托管、不分发任何视频内容。所有视频均来自以下第三方影视站点对外公开的 JSON API，本项目仅对 API 返回数据进行解析和聚合播放，相当于一个"播放器客户端"。
 
-**如您是版权方且认为本项目侵害了您的权益，请通过 [Issues](https://github.com/danweiyuancircle/watch-video/issues) 联系我，我将在 24 小时内配合处理或下线项目。**
+**如您是版权方且认为本项目侵害了您的权益，请通过 [Issues](https://github.com/danweiyuancircle/veya/issues) 联系我，我将在 24 小时内配合处理或下线项目。**
 
 ---
 
 ## 下载
 
-👉 **[点击下载最新 APK](https://github.com/danweiyuancircle/watch-video/releases/latest)**
+👉 **[点击下载最新 APK](https://github.com/danweiyuancircle/veya/releases/latest)**
 
 安装前需在手机设置中允许"安装未知来源应用"。
 
@@ -92,11 +92,11 @@ This project is a **personal learning tool only** — **commercial use is strict
 
 This app does not store, host, or distribute any video content. All videos are sourced from publicly accessible JSON APIs provided by third-party streaming sites. This app simply parses and plays the API responses — it functions as a "player client" only.
 
-**If you are a rights holder and believe this project infringes your copyright, please open an [Issue](https://github.com/danweiyuancircle/watch-video/issues). I will respond within 24 hours and will take down the project if required.**
+**If you are a rights holder and believe this project infringes your copyright, please open an [Issue](https://github.com/danweiyuancircle/veya/issues). I will respond within 24 hours and will take down the project if required.**
 
 ## Download
 
-👉 **[Download latest APK](https://github.com/danweiyuancircle/watch-video/releases/latest)**
+👉 **[Download latest APK](https://github.com/danweiyuancircle/veya/releases/latest)**
 
 You may need to enable "Install from unknown sources" in your phone settings.
 
