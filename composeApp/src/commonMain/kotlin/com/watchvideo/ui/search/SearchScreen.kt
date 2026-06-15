@@ -25,17 +25,23 @@ fun SearchScreen(
     onResultClick: (SearchResult) -> Unit
 ) {
     val query by viewModel.query.collectAsState()
-    val results by viewModel.results.collectAsState()
+    val groups by viewModel.groups.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val history by viewModel.history.collectAsState()
 
     var showHistory by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(0) }
+
+    // 结果集变化时把选中 tab 收敛到合法范围
+    LaunchedEffect(groups) {
+        if (selectedTab >= groups.size) selectedTab = 0
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .safeContentPadding()
+            .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -44,7 +50,7 @@ fun SearchScreen(
                 onValueChange = viewModel::onQueryChange,
                 modifier = Modifier
                     .weight(1f)
-                    .onFocusChanged { showHistory = it.isFocused && results.isEmpty() },
+                    .onFocusChanged { showHistory = it.isFocused && groups.isEmpty() },
                 placeholder = { Text("搜索影视...") },
                 singleLine = true
             )
@@ -123,12 +129,29 @@ fun SearchScreen(
             ) {
                 Text(text = error!!, color = MaterialTheme.colorScheme.error)
             }
-            else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(results) { result ->
-                    SearchResultItem(result = result, onClick = {
-                        showHistory = false
-                        onResultClick(result)
-                    })
+            groups.isNotEmpty() -> {
+                // 站点 Tab：每个数据源一个 tab，标题带结果数，知道数据从哪来
+                ScrollableTabRow(
+                    selectedTabIndex = selectedTab.coerceIn(0, groups.size - 1),
+                    edgePadding = 0.dp
+                ) {
+                    groups.forEachIndexed { index, group ->
+                        Tab(
+                            selected = index == selectedTab,
+                            onClick = { selectedTab = index },
+                            text = { Text("${group.siteName} (${group.results.size})") }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                val current = groups[selectedTab.coerceIn(0, groups.size - 1)]
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(current.results) { result ->
+                        SearchResultItem(result = result, onClick = {
+                            showHistory = false
+                            onResultClick(result)
+                        })
+                    }
                 }
             }
         }
@@ -151,12 +174,6 @@ private fun SearchResultItem(result: SearchResult, onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.align(Alignment.CenterVertically)) {
                 Text(text = result.title, style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = result.siteKey,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }

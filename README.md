@@ -33,11 +33,12 @@
 
 ## 支持的数据源
 
-| 站点名称 | API 域名 | 说明 |
+| 站点名称 | 域名 | 解析方式 |
 |----------|----------|------|
 | 模板影视 | `caiji.moduapi.cc` | 苹果CMS v10 标准 JSON API |
+| 秉奇影视 | `www.bingqichem.com` | 站点页面 HTML 解析（搜索 / 详情 / m3u8 直链） |
 
-> 工作原理：App 调用站点公开的 JSON API，解析返回的视频列表和 m3u8 地址，在本地使用 ExoPlayer 直接播放，不经过任何中间服务器。
+> 工作原理：App 调用站点公开接口或解析其页面，提取视频列表和 m3u8 地址，在本地使用 ExoPlayer 直接播放，不经过任何中间服务器。搜索结果按数据源站点分组展示；设置页可查看当前对接的所有站点。
 
 ---
 
@@ -45,8 +46,9 @@
 
 | 功能 | 说明 |
 |------|------|
-| 全网搜索 | 并发查询多个影视源，结果合并展示 |
+| 全网搜索 | 并发查询多个影视源，结果按站点分组展示 |
 | 搜索历史 | 自动记录最近 20 条，点输入框复用 |
+| 数据源设置页 | 查看当前对接的所有站点及域名 |
 | 多线路选集 | 支持多条播放线路切换，当前集高亮 |
 | 无广告播放 | 内嵌 ExoPlayer，直接串流，无跳转 |
 | 手势控制 | 单击 / 水平滑动快进快退 / 长按倍速 |
@@ -98,18 +100,20 @@ You may need to enable "Install from unknown sources" in your phone settings.
 
 ## Supported Sources
 
-| Site | API Domain | Notes |
+| Site | Domain | Parsing |
 |------|-----------|-------|
 | 模板影视 (Modu) | `caiji.moduapi.cc` | Standard 苹果CMS v10 JSON API |
+| 秉奇影视 (Bingqi) | `www.bingqichem.com` | HTML page parsing (search / detail / m3u8) |
 
-> How it works: The app calls the site's public JSON API, parses the returned video list and m3u8 URLs, and plays them locally with ExoPlayer — no intermediate servers involved.
+> How it works: The app calls each site's public API or parses its pages, extracts the video list and m3u8 URLs, and plays them locally with ExoPlayer — no intermediate servers involved. Search results are grouped by source site; the Settings page lists all connected sites.
 
 ## Features
 
 | Feature | Description |
 |---------|-------------|
-| Multi-source search | Concurrent queries, results merged |
+| Multi-source search | Concurrent queries, results grouped by site |
 | Search history | Last 20 queries, tap to reuse |
+| Sources settings page | View all connected sites and domains |
 | Multi-route episodes | Switch routes; current episode highlighted |
 | Ad-free playback | Embedded ExoPlayer, direct HLS stream |
 | Gesture controls | Tap / swipe seek / long-press 2× speed |

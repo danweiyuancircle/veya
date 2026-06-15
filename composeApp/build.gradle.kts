@@ -49,6 +49,7 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
             implementation(libs.androidx.navigation.compose)
+            implementation(libs.multiplatform.settings.no.arg)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
