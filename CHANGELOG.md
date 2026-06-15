@@ -11,6 +11,17 @@
 
 ---
 
+## [v1.0.2] - 2026-06-15
+
+### 新增
+- 应用品牌升级为 `Veya`
+- Android 启动图标替换为新的 `Veya` 图标资源
+- README 新增 logo 展示和品牌资源说明
+
+### 变更
+- Android 应用名从 `WatchVideo` 改为 `Veya`
+- Gradle 根项目名从 `WatchVideo` 改为 `Veya`
+
 ## [v1.0.1] - 2026-06-12
 
 ### 修复

@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "WatchVideo"
+rootProject.name = "Veya"
 include(":composeApp")

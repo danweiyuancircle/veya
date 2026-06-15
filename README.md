@@ -1,8 +1,10 @@
 <div align="center">
 
-# WatchVideo
+<img src="design/app_icon/veya-ios-1024.png" alt="Veya logo" width="160" />
 
-*免费、无广告的视频聚合播放器*
+# Veya
+
+*Veya · 免费、无广告的视频聚合播放器*
 
 [![Build APK](https://github.com/danweiyuancircle/watch-video/actions/workflows/build-apk.yml/badge.svg)](https://github.com/danweiyuancircle/watch-video/actions/workflows/build-apk.yml)
 [![Release](https://img.shields.io/github/v/release/danweiyuancircle/watch-video?label=latest%20APK)](https://github.com/danweiyuancircle/watch-video/releases/latest)
@@ -137,5 +139,11 @@ Long press 2s     — 2× speed, releases back to 1×
 ## License
 
 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) · Non-commercial use only
+
+## Branding Assets
+
+- App Name: `Veya`
+- Android App Icon: `design/app_icon/veya-android-192.png`
+- iOS App Icon Source: `design/app_icon/veya-ios-1024.png`
 
 </details>

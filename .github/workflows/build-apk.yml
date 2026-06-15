@@ -42,13 +42,13 @@ jobs:
       - name: Rename APK
         env:
           TAG: ${{ github.ref_name }}
-        run: mv composeApp/build/outputs/apk/debug/composeApp-debug.apk "watchvideo-${TAG}.apk"
+        run: mv composeApp/build/outputs/apk/debug/composeApp-debug.apk "veya-${TAG}.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: watchvideo-${{ github.ref_name }}
-          path: watchvideo-${{ github.ref_name }}.apk
+          name: veya-${{ github.ref_name }}
+          path: veya-${{ github.ref_name }}.apk
           retention-days: 30
 
   release:
@@ -65,7 +65,7 @@ jobs:
       - name: Download APK artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: watchvideo-${{ github.ref_name }}
+          name: veya-${{ github.ref_name }}
 
       - name: Extract changelog for this version
         id: changelog
@@ -93,5 +93,5 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           body: ${{ steps.changelog.outputs.notes }}
-          files: watchvideo-${{ github.ref_name }}.apk
+          files: veya-${{ github.ref_name }}.apk
           make_latest: true
