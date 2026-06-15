@@ -1,8 +1,11 @@
 package com.watchvideo.ui.detail
 
 import com.watchvideo.data.ParserRegistry
+import com.watchvideo.data.SiteParser
 import com.watchvideo.data.model.PlayInfo
 import com.watchvideo.data.model.Route
+import com.watchvideo.data.model.toLegacyPlayInfo
+import com.watchvideo.data.model.toLegacyRoutes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -11,8 +14,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class DetailViewModel {
-    private val scope = CoroutineScope(Dispatchers.Default + Job())
+class DetailViewModel(
+    private val parserLookup: (String) -> SiteParser = ParserRegistry::get,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default + Job()),
+) {
 
     private val _routes = MutableStateFlow<List<Route>>(emptyList())
     val routes: StateFlow<List<Route>> = _routes.asStateFlow()
@@ -39,9 +44,13 @@ class DetailViewModel {
         scope.launch {
             _isLoading.value = true
             _error.value = null
+            _routes.value = emptyList()
+            _playInfo.value = null
+            _currentRouteIndex.value = 0
+            _currentEpisodeIndex.value = -1
             try {
-                val parser = ParserRegistry.get(siteKey)
-                _routes.value = parser.detail(id)
+                val parser = parserLookup(siteKey)
+                _routes.value = parser.detail(id).toLegacyRoutes()
             } catch (e: Exception) {
                 _error.value = "加载失败: ${e.message}"
             } finally {
@@ -51,15 +60,21 @@ class DetailViewModel {
     }
 
     fun selectEpisode(siteKey: String, routeIndex: Int, episodeIndex: Int, playUrl: String) {
-        _currentRouteIndex.value = routeIndex
-        _currentEpisodeIndex.value = episodeIndex
+        val previousRouteIndex = _currentRouteIndex.value
+        val previousEpisodeIndex = _currentEpisodeIndex.value
+        val previousPlayInfo = _playInfo.value
         scope.launch {
             _isLoadingPlay.value = true
             _error.value = null
             try {
-                val parser = ParserRegistry.get(siteKey)
-                _playInfo.value = parser.playInfo(playUrl)
+                val parser = parserLookup(siteKey)
+                _playInfo.value = parser.playInfo(playUrl).toLegacyPlayInfo()
+                _currentRouteIndex.value = routeIndex
+                _currentEpisodeIndex.value = episodeIndex
             } catch (e: Exception) {
+                _currentRouteIndex.value = previousRouteIndex
+                _currentEpisodeIndex.value = previousEpisodeIndex
+                _playInfo.value = previousPlayInfo
                 _error.value = "获取播放地址失败: ${e.message}"
             } finally {
                 _isLoadingPlay.value = false

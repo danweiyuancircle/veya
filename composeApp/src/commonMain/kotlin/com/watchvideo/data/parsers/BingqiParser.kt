@@ -1,10 +1,11 @@
 package com.watchvideo.data.parsers
 
 import com.watchvideo.data.SiteParser
-import com.watchvideo.data.model.Episode
-import com.watchvideo.data.model.PlayInfo
-import com.watchvideo.data.model.Route
-import com.watchvideo.data.model.SearchResult
+import com.watchvideo.data.model.PlaybackCandidate
+import com.watchvideo.data.model.PlaybackEpisode
+import com.watchvideo.data.model.PlaybackRoute
+import com.watchvideo.data.model.SourceDetail
+import com.watchvideo.data.model.SourceSearchItem
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -27,20 +28,30 @@ class BingqiParser(private val client: HttpClient) : SiteParser {
     override val siteName = "秉奇影视"
     override val baseUrl = "https://www.bingqichem.com"
 
-    override suspend fun search(keyword: String): List<SearchResult> {
+    override suspend fun search(keyword: String): List<SourceSearchItem> {
         val html = fetch("$baseUrl/search.php?searchword=${keyword.encodeURLParameter()}")
         return parseSearchResults(html)
     }
 
-    override suspend fun detail(id: String): List<Route> {
+    override suspend fun detail(id: String): SourceDetail {
         val html = fetch("$baseUrl/slob/$id.html")
-        return parseRoutes(html)
+        return SourceDetail(
+            sourceKey = siteKey,
+            sourceName = siteName,
+            contentKey = buildContentKey(id),
+            sourceContentId = id,
+            title = "",
+            coverUrl = null,
+            summary = null,
+            metadata = emptyList(),
+            routes = parseRoutes(html),
+        )
     }
 
-    override suspend fun playInfo(playPageUrl: String): PlayInfo {
+    override suspend fun playInfo(playPageUrl: String): PlaybackCandidate {
         val html = fetch(playPageUrl)
         return try {
-            parsePlayInfo(html)
+            parsePlayInfo(playPageUrl, html)
         } catch (e: Exception) {
             throw SiteParseException(siteKey, "playInfo 解析失败: $playPageUrl", e)
         }
@@ -57,7 +68,7 @@ class BingqiParser(private val client: HttpClient) : SiteParser {
         }.bodyAsText()
     }
 
-    private fun parseSearchResults(html: String): List<SearchResult> {
+    private fun parseSearchResults(html: String): List<SourceSearchItem> {
         // 封面与标题是两个独立 <a>，均带 /slob/{id}.html，按 id 关联
         val coverPattern = Regex("""<a class="fed-list-pics[^"]*" href="/slob/(\d+)\.html" data-original="([^"]+)"""")
         val titlePattern = Regex("""<a class="fed-list-title[^"]*" href="/slob/(\d+)\.html"[^>]*>([^<]+)</a>""")
@@ -69,11 +80,21 @@ class BingqiParser(private val client: HttpClient) : SiteParser {
             val title = m.groupValues[2].trim()
             val imgPath = covers[id] ?: ""
             val cover = if (imgPath.startsWith("http")) imgPath else "$baseUrl$imgPath"
-            SearchResult(id = id, title = title, cover = cover, siteKey = siteKey)
+            SourceSearchItem(
+                sourceKey = siteKey,
+                sourceName = siteName,
+                contentKey = buildContentKey(id),
+                sourceContentId = id,
+                title = title,
+                coverUrl = cover,
+                subtitle = null,
+                tags = emptyList(),
+                detailUrl = "$baseUrl/slob/$id.html",
+            )
         }.toList()
     }
 
-    private fun parseRoutes(html: String): List<Route> {
+    private fun parseRoutes(html: String): List<PlaybackRoute> {
         // 线路名（fed-tabs-btns）。该标签也用于非线路 tab（如"剧情介绍"），
         // 数量可能多于 playlist 块，按 ul 数量截断对齐即可，多余的丢弃。
         val tabPattern = Regex("""<li class="fed-tabs-btns[^"]*">([^<]+)</li>""")
@@ -86,25 +107,37 @@ class BingqiParser(private val client: HttpClient) : SiteParser {
         return ulPattern.findAll(html).mapIndexed { index, ulMatch ->
             val blockHtml = ulMatch.groupValues[1]
             val episodes = episodePattern.findAll(blockHtml).map { ep ->
-                Episode(
-                    name = ep.groupValues[2].trim(),
-                    playUrl = "$baseUrl${ep.groupValues[1]}"
+                val playPageUrl = "$baseUrl${ep.groupValues[1]}"
+                PlaybackEpisode(
+                    episodeKey = playPageUrl,
+                    episodeLabel = ep.groupValues[2].trim(),
+                    playPageUrl = playPageUrl,
                 )
             }.toList()
-            Route(
-                name = tabNames.getOrElse(index) { "线路${index + 1}" },
+            PlaybackRoute(
+                routeKey = tabNames.getOrElse(index) { "route-${index + 1}" },
+                routeName = tabNames.getOrElse(index) { "线路${index + 1}" },
                 episodes = episodes
             )
         }.filter { it.episodes.isNotEmpty() }.toList()
     }
 
-    private fun parsePlayInfo(html: String): PlayInfo {
+    private fun parsePlayInfo(playPageUrl: String, html: String): PlaybackCandidate {
         // 播放页 JS：var now=base64decode("<base64 当前集 m3u8>")（next 是下一集，勿用）
         val pattern = Regex("""var\s+now\s*=\s*base64decode\("([A-Za-z0-9+/=]+)"\)""")
         val encoded = pattern.find(html)?.groupValues?.get(1)
             ?: throw IllegalStateException("未找到 base64decode 播放地址")
-        return PlayInfo(m3u8Url = decodeBase64(encoded), title = "")
+        return PlaybackCandidate(
+            sourceKey = siteKey,
+            routeKey = "",
+            episodeKey = playPageUrl,
+            title = "",
+            streamUrl = decodeBase64(encoded),
+            headers = emptyMap(),
+        )
     }
+
+    private fun buildContentKey(id: String): String = "$siteKey:$id"
 
     @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
     private fun decodeBase64(encoded: String): String =

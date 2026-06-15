@@ -2,7 +2,9 @@ package com.watchvideo.ui.search
 
 import com.russhwolf.settings.Settings
 import com.watchvideo.data.ParserRegistry
+import com.watchvideo.data.SiteParser
 import com.watchvideo.data.model.SearchResult
+import com.watchvideo.data.model.toLegacySearchResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -24,9 +26,11 @@ data class SiteResultGroup(
 )
 
 class SearchViewModel(
-    private val settings: Settings = Settings()
+    private val settings: Settings = Settings(),
+    private val parserProvider: () -> List<SiteParser> = ParserRegistry::all,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default + Job()),
 ) {
-    private val scope = CoroutineScope(Dispatchers.Default + Job())
+    private var latestSearchRequestId = 0L
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
@@ -64,39 +68,53 @@ class SearchViewModel(
     fun search() {
         val keyword = _query.value.trim()
         if (keyword.isEmpty()) return
+        val requestId = ++latestSearchRequestId
 
         // 更新历史（去重，新的排最前，最多保留 20 条）
         updateHistory((listOf(keyword) + _history.value.filter { it != keyword }).take(MAX_HISTORY))
 
         scope.launch {
+            if (requestId != latestSearchRequestId) return@launch
             _isLoading.value = true
             _error.value = null
             _groups.value = emptyList()
 
-            val errors = mutableListOf<String>()
             val parsers = try {
-                ParserRegistry.all()
+                parserProvider()
             } catch (e: Exception) {
+                if (requestId != latestSearchRequestId) return@launch
                 _error.value = "初始化失败(${e::class.simpleName}): ${e.message}"
                 _isLoading.value = false
                 return@launch
             }
 
             // 每个站点各自一组，并发搜索；只保留有结果的分组
-            val groups = parsers
+            val outcomes = parsers
                 .map { parser ->
                     async {
-                        val results = try {
-                            parser.search(keyword)
+                        try {
+                            SearchOutcome(
+                                group = SiteResultGroup(
+                                    parser.siteKey,
+                                    parser.siteName,
+                                    parser.search(keyword).map { it.toLegacySearchResult() }
+                                )
+                            )
                         } catch (e: Exception) {
-                            errors.add("${parser.siteName}失败\n类型:${e::class.simpleName}\n原因:${e.message}")
-                            emptyList()
+                            SearchOutcome(
+                                error = "${parser.siteName}失败\n类型:${e::class.simpleName}\n原因:${e.message}"
+                            )
                         }
-                        SiteResultGroup(parser.siteKey, parser.siteName, results)
                     }
                 }
                 .awaitAll()
+
+            if (requestId != latestSearchRequestId) return@launch
+
+            val groups = outcomes
+                .mapNotNull { it.group }
                 .filter { it.results.isNotEmpty() }
+            val errors = outcomes.mapNotNull { it.error }
 
             _groups.value = groups
             if (groups.isEmpty()) {
@@ -112,4 +130,9 @@ class SearchViewModel(
         const val MAX_HISTORY = 20
         val historySerializer = ListSerializer(String.serializer())
     }
+
+    private data class SearchOutcome(
+        val group: SiteResultGroup? = null,
+        val error: String? = null,
+    )
 }

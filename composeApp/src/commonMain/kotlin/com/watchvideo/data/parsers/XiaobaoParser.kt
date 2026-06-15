@@ -1,10 +1,11 @@
 package com.watchvideo.data.parsers
 
 import com.watchvideo.data.SiteParser
-import com.watchvideo.data.model.Episode
-import com.watchvideo.data.model.PlayInfo
-import com.watchvideo.data.model.Route
-import com.watchvideo.data.model.SearchResult
+import com.watchvideo.data.model.PlaybackCandidate
+import com.watchvideo.data.model.PlaybackEpisode
+import com.watchvideo.data.model.PlaybackRoute
+import com.watchvideo.data.model.SourceDetail
+import com.watchvideo.data.model.SourceSearchItem
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -25,20 +26,30 @@ class XiaobaoParser(private val client: HttpClient) : SiteParser {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    override suspend fun search(keyword: String): List<SearchResult> {
+    override suspend fun search(keyword: String): List<SourceSearchItem> {
         val html = fetch("$baseUrl/search.html?wd=${keyword.encodeURLParameter()}&submit=")
         return parseSearchResults(html)
     }
 
-    override suspend fun detail(id: String): List<Route> {
+    override suspend fun detail(id: String): SourceDetail {
         val html = fetch("$baseUrl/vod/detail/$id.html")
-        return parseRoutes(html)
+        return SourceDetail(
+            sourceKey = siteKey,
+            sourceName = siteName,
+            contentKey = buildContentKey(id),
+            sourceContentId = id,
+            title = "",
+            coverUrl = null,
+            summary = null,
+            metadata = emptyList(),
+            routes = parseRoutes(html),
+        )
     }
 
-    override suspend fun playInfo(playPageUrl: String): PlayInfo {
+    override suspend fun playInfo(playPageUrl: String): PlaybackCandidate {
         val html = fetch(playPageUrl)
         return try {
-            parsePlayInfo(html)
+            parsePlayInfo(playPageUrl, html)
         } catch (e: Exception) {
             throw SiteParseException(siteKey, "playInfo 解析失败: $playPageUrl", e)
         }
@@ -55,7 +66,7 @@ class XiaobaoParser(private val client: HttpClient) : SiteParser {
         }.bodyAsText()
     }
 
-    private fun parseSearchResults(html: String): List<SearchResult> {
+    private fun parseSearchResults(html: String): List<SourceSearchItem> {
         // 封面图 <a> 标签属性顺序固定：class → href → title → data-original
         // class 以 myui-vodlist__thumb 开头，精确锁定搜索结果卡片，避免误匹配侧边栏
         val pattern = Regex("""<a class="myui-vodlist__thumb[^"]*" href="/vod/detail/(\d+)\.html" title="([^"]+)" data-original="([^"]+)"""")
@@ -64,11 +75,21 @@ class XiaobaoParser(private val client: HttpClient) : SiteParser {
             val title = m.groupValues[2]
             val imgPath = m.groupValues[3]
             val cover = if (imgPath.startsWith("http")) imgPath else "$baseUrl$imgPath"
-            SearchResult(id = id, title = title, cover = cover, siteKey = siteKey)
+            SourceSearchItem(
+                sourceKey = siteKey,
+                sourceName = siteName,
+                contentKey = buildContentKey(id),
+                sourceContentId = id,
+                title = title,
+                coverUrl = cover,
+                subtitle = null,
+                tags = emptyList(),
+                detailUrl = "$baseUrl/vod/detail/$id.html",
+            )
         }.toList()
     }
 
-    private fun parseRoutes(html: String): List<Route> {
+    private fun parseRoutes(html: String): List<PlaybackRoute> {
         val tabPattern = Regex("""data-tab="([^"]+)"""")
         val tabNames = tabPattern.findAll(html).map { it.groupValues[1] }.toList()
 
@@ -78,19 +99,22 @@ class XiaobaoParser(private val client: HttpClient) : SiteParser {
         return ulPattern.findAll(html).mapIndexed { index, ulMatch ->
             val blockHtml = ulMatch.groupValues[1]
             val episodes = episodePattern.findAll(blockHtml).map { ep ->
-                Episode(
-                    name = ep.groupValues[2].trim(),
-                    playUrl = "$baseUrl${ep.groupValues[1]}"
+                val playPageUrl = "$baseUrl${ep.groupValues[1]}"
+                PlaybackEpisode(
+                    episodeKey = playPageUrl,
+                    episodeLabel = ep.groupValues[2].trim(),
+                    playPageUrl = playPageUrl,
                 )
             }.toList()
-            Route(
-                name = tabNames.getOrElse(index) { "线路${index + 1}" },
+            PlaybackRoute(
+                routeKey = tabNames.getOrElse(index) { "route-${index + 1}" },
+                routeName = tabNames.getOrElse(index) { "线路${index + 1}" },
                 episodes = episodes
             )
         }.toList()
     }
 
-    private fun parsePlayInfo(html: String): PlayInfo {
+    private fun parsePlayInfo(playPageUrl: String, html: String): PlaybackCandidate {
         val playerPattern = Regex("""var player_aaaa\s*=\s*(\{.*?\})\s*</script>""", RegexOption.DOT_MATCHES_ALL)
         val match = playerPattern.find(html)
             ?: throw IllegalStateException("未找到 player_aaaa 配置")
@@ -109,8 +133,17 @@ class XiaobaoParser(private val client: HttpClient) : SiteParser {
         val vodData = playerJson["vod_data"]?.jsonObject
         val title = vodData?.get("vod_name")?.jsonPrimitive?.content ?: ""
 
-        return PlayInfo(m3u8Url = m3u8Url, title = title)
+        return PlaybackCandidate(
+            sourceKey = siteKey,
+            routeKey = "",
+            episodeKey = playPageUrl,
+            title = title,
+            streamUrl = m3u8Url,
+            headers = emptyMap(),
+        )
     }
+
+    private fun buildContentKey(id: String): String = "$siteKey:$id"
 
     @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
     private fun decodeBase64(encoded: String): String =
