@@ -48,6 +48,10 @@ class SearchViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    /** 部分源失败提示：有结果但某些源搜索失败时展示，便于诊断。 */
+    private val _warning = MutableStateFlow<String?>(null)
+    val warning: StateFlow<String?> = _warning.asStateFlow()
+
     private val _history = MutableStateFlow(loadHistory())
     val history: StateFlow<List<String>> = _history.asStateFlow()
 
@@ -84,6 +88,7 @@ class SearchViewModel(
             if (requestId != latestSearchRequestId) return@launch
             _isLoading.value = true
             _error.value = null
+            _warning.value = null
             _groups.value = emptyList()
 
             val parsers = try {
@@ -104,6 +109,9 @@ class SearchViewModel(
             if (result.groups.isEmpty()) {
                 _error.value = if (result.errors.isNotEmpty()) result.errors.joinToString("\n\n")
                                else "未找到结果(parsers=${parsers.size}, kw=$keyword)"
+            } else if (result.errors.isNotEmpty()) {
+                // 有结果但部分源失败：提示而非报错，便于诊断哪个源不可用
+                _warning.value = result.errors.joinToString("\n\n")
             }
             _isLoading.value = false
         }

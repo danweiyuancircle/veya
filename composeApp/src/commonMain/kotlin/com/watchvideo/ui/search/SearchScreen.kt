@@ -37,6 +37,7 @@ fun SearchScreen(
     val groups by viewModel.groups.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val warning by viewModel.warning.collectAsState()
     val history by viewModel.history.collectAsState()
 
     var showHistory by remember { mutableStateOf(false) }
@@ -123,6 +124,16 @@ fun SearchScreen(
                 }
             }
             return@Column
+        }
+
+        // 有结果但部分源失败时的提示（可诊断哪个源不可用）
+        warning?.let { w ->
+            Text(
+                text = "⚠ $w",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            )
         }
 
         when {

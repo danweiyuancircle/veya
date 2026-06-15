@@ -89,18 +89,38 @@ class BingqiParser(private val client: HttpClient) : SiteParser {
         }.bodyAsText()
     }
 
-    private fun parseSearchResults(html: String): List<SourceSearchItem> {
-        // 封面与标题是两个独立 <a>，均带 /slob/{id}.html，按 id 关联
-        val coverPattern = Regex("""<a class="fed-list-pics[^"]*" href="/slob/(\d+)\.html" data-original="([^"]+)"""")
-        val titlePattern = Regex("""<a class="fed-list-title[^"]*" href="/slob/(\d+)\.html"[^>]*>([^<]+)</a>""")
+    internal fun parseSearchResults(html: String): List<SourceSearchItem> {
+        // 不依赖具体 class 名 / 属性顺序，只锚定稳定特征：
+        //   标题——含 href="/slob/{id}.html" 的 <a>，取其 title 属性或标签内文本
+        //   封面——同一 <a>/<img> 上 data-original 或 src 指向的图，按 id 关联
+        // maccms FED 模板搜索结果项中，标题链接通常带 title 属性。
 
-        val covers = coverPattern.findAll(html).associate { it.groupValues[1] to it.groupValues[2] }
+        // 封面：data-original/src 与 /slob/{id}.html 出现在同一标签，两种属性顺序都覆盖
+        val covers = mutableMapOf<String, String>()
+        Regex("""(?:data-original|src)="([^"]+\.(?:jpg|jpeg|png|webp))"[^>]*href="/slob/(\d+)\.html"""")
+            .findAll(html).forEach { covers.putIfAbsent(it.groupValues[2], it.groupValues[1]) }
+        Regex("""href="/slob/(\d+)\.html"[^>]*(?:data-original|src)="([^"]+\.(?:jpg|jpeg|png|webp))"""")
+            .findAll(html).forEach { covers.putIfAbsent(it.groupValues[1], it.groupValues[2]) }
 
-        return titlePattern.findAll(html).map { m ->
-            val id = m.groupValues[1]
-            val title = m.groupValues[2].trim()
-            val imgPath = covers[id] ?: ""
-            val cover = if (imgPath.startsWith("http")) imgPath else "$baseUrl$imgPath"
+        // 标题优先取 title 属性（顺序无关），回退取标签内文本
+        val byTitleAttr = Regex("""<a\b[^>]*?href="/slob/(\d+)\.html"[^>]*?\btitle="([^"]+)"""")
+            .findAll(html).associate { it.groupValues[1] to it.groupValues[2].trim() }
+        val byTitleAttr2 = Regex("""<a\b[^>]*?\btitle="([^"]+)"[^>]*?href="/slob/(\d+)\.html"""")
+            .findAll(html).associate { it.groupValues[2] to it.groupValues[1].trim() }
+        val byText = Regex("""<a\b[^>]*?href="/slob/(\d+)\.html"[^>]*>([^<]{1,80})</a>""")
+            .findAll(html).associate { it.groupValues[1] to it.groupValues[2].trim() }
+
+        // 合并所有 id，标题三路回退，去重
+        val ids = (byTitleAttr.keys + byTitleAttr2.keys + byText.keys).toSet()
+        return ids.mapNotNull { id ->
+            val title = (byTitleAttr[id] ?: byTitleAttr2[id] ?: byText[id])?.takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null
+            val imgPath = covers[id].orEmpty()
+            val cover = when {
+                imgPath.isBlank() -> null
+                imgPath.startsWith("http") -> imgPath
+                else -> "$baseUrl$imgPath"
+            }
             SourceSearchItem(
                 sourceKey = siteKey,
                 sourceName = siteName,
@@ -112,7 +132,7 @@ class BingqiParser(private val client: HttpClient) : SiteParser {
                 tags = emptyList(),
                 detailUrl = "$baseUrl/slob/$id.html",
             )
-        }.toList()
+        }
     }
 
     private fun parseRoutes(html: String): List<PlaybackRoute> {
