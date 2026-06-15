@@ -87,22 +87,24 @@ android {
         }
     }
 
+    // release 签名是否就绪（keystore.properties 或环境变量配齐）
+    val hasReleaseSigning = run {
+        val storeFilePath = keystoreProperties.getProperty("storeFile") ?: System.getenv("KEYSTORE_PATH")
+        val storePassword = keystoreProperties.getProperty("storePassword") ?: System.getenv("KEYSTORE_PASSWORD")
+        val keyAlias = keystoreProperties.getProperty("keyAlias") ?: System.getenv("KEY_ALIAS")
+        val keyPassword = keystoreProperties.getProperty("keyPassword") ?: System.getenv("KEY_PASSWORD")
+        storeFilePath != null && storePassword != null && keyAlias != null && keyPassword != null
+    }
+
     signingConfigs {
         create("release") {
-            val storeFilePath = keystoreProperties.getProperty("storeFile")
-                ?: System.getenv("KEYSTORE_PATH")
-            val storePassword = keystoreProperties.getProperty("storePassword")
-                ?: System.getenv("KEYSTORE_PASSWORD")
-            val keyAlias = keystoreProperties.getProperty("keyAlias")
-                ?: System.getenv("KEY_ALIAS")
-            val keyPassword = keystoreProperties.getProperty("keyPassword")
-                ?: System.getenv("KEY_PASSWORD")
-
-            if (storeFilePath != null && storePassword != null && keyAlias != null && keyPassword != null) {
-                storeFile = rootProject.file(storeFilePath)
-                this.storePassword = storePassword
-                this.keyAlias = keyAlias
-                this.keyPassword = keyPassword
+            if (hasReleaseSigning) {
+                storeFile = rootProject.file(
+                    keystoreProperties.getProperty("storeFile") ?: System.getenv("KEYSTORE_PATH")
+                )
+                storePassword = keystoreProperties.getProperty("storePassword") ?: System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = keystoreProperties.getProperty("keyAlias") ?: System.getenv("KEY_ALIAS")
+                keyPassword = keystoreProperties.getProperty("keyPassword") ?: System.getenv("KEY_PASSWORD")
             }
         }
     }
@@ -111,6 +113,13 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
+        }
+        // debug 也用 release 签名（keystore 就绪时），保证 debug/release 可互相覆盖安装；
+        // 未配 keystore 时回退默认 debug 签名，不阻塞本地构建
+        getByName("debug") {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
