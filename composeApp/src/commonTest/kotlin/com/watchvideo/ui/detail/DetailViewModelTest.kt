@@ -20,6 +20,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -55,11 +56,13 @@ class DetailViewModelTest {
         viewModel.loadDetail(siteKey = "modu", id = "hero-2026", title = "英雄2026")
         advanceUntilIdle()
 
+        // 历史集自动开始播放（无需手动点）
         val state = viewModel.state.value
-        assertIs<DetailPlaybackState.Ready>(state)
-        assertEquals("modu", state.selectedSourceKey)
-        assertEquals("route-2", state.selectedRouteKey)
-        assertEquals("ep-8", state.selectedEpisodeKey)
+        assertIs<DetailPlaybackState.Playing>(state)
+        assertEquals("modu", state.sourceKey)
+        assertEquals("route-2", state.routeKey)
+        assertEquals("ep-8", state.episodeKey)
+        assertNotNull(viewModel.streamUrl.value)
     }
 
     @Test
@@ -75,11 +78,13 @@ class DetailViewModelTest {
         viewModel.loadDetail(siteKey = "modu", id = "hero-2026", title = "英雄2026")
         advanceUntilIdle()
 
+        // 默认集（首源首线路首集）自动开始播放
         val state = viewModel.state.value
-        assertIs<DetailPlaybackState.Ready>(state)
-        assertEquals("modu", state.selectedSourceKey)
-        assertEquals("route-1", state.selectedRouteKey)
-        assertEquals("ep-1", state.selectedEpisodeKey)
+        assertIs<DetailPlaybackState.Playing>(state)
+        assertEquals("modu", state.sourceKey)
+        assertEquals("route-1", state.routeKey)
+        assertEquals("ep-1", state.episodeKey)
+        assertNotNull(viewModel.streamUrl.value)
     }
 
     @Test
@@ -135,12 +140,8 @@ class DetailViewModelTest {
             parser = FakeSiteParser(),
         )
 
+        // loadDetail 后自动播放默认集，进入 Playing 态
         viewModel.loadDetail(siteKey = "modu", id = "hero-2026", title = "英雄2026")
-        advanceUntilIdle()
-        assertIs<DetailPlaybackState.Ready>(viewModel.state.value)
-
-        // 进入 Playing 态
-        viewModel.selectEpisode("modu", "route-1", "ep-1")
         advanceUntilIdle()
         assertIs<DetailPlaybackState.Playing>(viewModel.state.value)
 

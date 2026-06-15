@@ -73,6 +73,12 @@ class DetailViewModel(
                 val ready = readyFromHistoryOrDefault(aggregated, title)
                 currentSelectedSourceKey = ready.selectedSourceKey
                 _state.value = ready
+                // 进入 Ready 后自动播放选中集（首次默认集 / 历史集），无需用户再手动点一次
+                val routeKey = ready.selectedRouteKey
+                val episodeKey = ready.selectedEpisodeKey
+                if (routeKey != null && episodeKey != null) {
+                    resolveAndPlay(aggregated, ready.selectedSourceKey, routeKey, episodeKey)
+                }
             } catch (e: Exception) {
                 _state.value = DetailPlaybackState.Failed("加载失败: ${e.message}")
             }
