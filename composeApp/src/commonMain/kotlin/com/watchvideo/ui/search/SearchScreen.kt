@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +29,7 @@ import com.watchvideo.ui.components.Cover
 import com.watchvideo.ui.theme.SourceTier
 import com.watchvideo.ui.theme.color
 import com.watchvideo.ui.theme.tierOf
+import kotlinx.coroutines.launch
 
 @Composable
 fun SearchScreen(
@@ -148,56 +151,59 @@ fun SearchScreen(
                 Text(text = error!!, color = MaterialTheme.colorScheme.error)
             }
             groups.isNotEmpty() -> {
-                // 按评分分级（优先/可用/其他），同档归一组；groups 不变不重算
-                val tiered = remember(groups) {
-                    groups
-                        .map { group -> group to tierOf(viewModel.rankValueOf(group.siteKey)) }
-                        .groupBy({ it.second }, { it.first })
+                // 横向 tab 展示各源，groups 已按评分降序排好（评分高的源在最前/第一个 tab）
+                val pagerState = rememberPagerState(pageCount = { groups.size })
+                val scope = rememberCoroutineScope()
+
+                ScrollableTabRow(
+                    selectedTabIndex = pagerState.currentPage.coerceIn(0, groups.size - 1),
+                    edgePadding = 0.dp,
+                ) {
+                    groups.forEachIndexed { index, group ->
+                        val tier = tierOf(viewModel.rankValueOf(group.siteKey))
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .background(tier.color(), CircleShape)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(group.siteName)
+                                }
+                            },
+                        )
+                    }
                 }
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SourceTier.entries.forEach { tier ->
-                        val tierGroups = tiered[tier] ?: return@forEach
-                        item(key = "header_${tier.name}") {
-                            TierHeader(tier = tier)
-                        }
-                        tierGroups.forEach { group ->
-                            items(group.results, key = { "${group.siteKey}_${it.id}" }) { result ->
-                                SearchResultItem(
-                                    result = result,
-                                    siteName = group.siteName,
-                                    tier = tier,
-                                    onClick = {
-                                        showHistory = false
-                                        onResultClick(result)
-                                    }
-                                )
-                            }
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                ) { page ->
+                    val group = groups[page]
+                    val tier = tierOf(viewModel.rankValueOf(group.siteKey))
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(top = 8.dp),
+                    ) {
+                        items(group.results, key = { "${group.siteKey}_${it.id}" }) { result ->
+                            SearchResultItem(
+                                result = result,
+                                siteName = group.siteName,
+                                tier = tier,
+                                onClick = {
+                                    showHistory = false
+                                    onResultClick(result)
+                                }
+                            )
                         }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun TierHeader(tier: SourceTier) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(tier.color(), CircleShape)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = tier.label,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground
-        )
     }
 }
 

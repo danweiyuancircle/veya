@@ -25,7 +25,9 @@ class ModuParser(private val client: HttpClient) : SiteParser {
     private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun search(keyword: String): List<SourceSearchItem> {
-        val body = fetch("$baseUrl/api.php/provide/vod/?ac=list&wd=${keyword.encodeURLParameter()}")
+        // 用 ac=detail 而非 ac=list：list 接口不返回 vod_pic，会导致搜索结果无封面；
+        // detail 接口支持 wd 关键词搜索且返回完整字段（含 vod_pic）
+        val body = fetch("$baseUrl/api.php/provide/vod/?ac=detail&wd=${keyword.encodeURLParameter()}")
         val root = json.parseToJsonElement(body).jsonObject
         val list = root["list"]?.jsonArray ?: return emptyList()
         return list.map { el ->

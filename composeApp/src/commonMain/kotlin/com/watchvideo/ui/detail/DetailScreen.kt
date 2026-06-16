@@ -1,13 +1,11 @@
 package com.watchvideo.ui.detail
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -20,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +31,7 @@ import com.watchvideo.data.model.AggregatedDetail
 import com.watchvideo.platformEpochMs
 import com.watchvideo.ui.theme.SourceTier
 import com.watchvideo.ui.theme.color
+import kotlinx.coroutines.delay
 
 @Composable
 fun DetailScreen(
@@ -67,6 +67,16 @@ fun DetailScreen(
 
     val resolutionHeight = (state as? DetailPlaybackState.Playing)?.resolutionHeight
 
+    // 分辨率角标只在拿到/变更分辨率后短暂显示，3 秒后自动淡出，不常驻
+    var showResolution by remember { mutableStateOf(false) }
+    LaunchedEffect(resolutionHeight) {
+        if (resolutionHeight != null) {
+            showResolution = true
+            delay(3000)
+            showResolution = false
+        }
+    }
+
     val onPrev: (() -> Unit)? = selection?.let { sel ->
         val routeKey = sel.routeKey ?: return@let null
         sel.prevEpisodeKey?.let { prevKey ->
@@ -94,13 +104,18 @@ fun DetailScreen(
                 onResolutionObserved = viewModel::onResolutionObserved,
                 modifier = if (isFullscreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth(),
             )
-            if (resolutionHeight != null) {
+            val resolutionAlpha by animateFloatAsState(
+                targetValue = if (resolutionHeight != null && showResolution) 1f else 0f,
+                label = "resolutionAlpha",
+            )
+            if (resolutionHeight != null && resolutionAlpha > 0f) {
                 Text(
                     text = "${resolutionHeight}p",
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.White,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
+                        .graphicsLayer { alpha = resolutionAlpha }
                         .padding(8.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(Color.Black.copy(alpha = 0.5f))
@@ -196,6 +211,7 @@ private data class SelectionKeys(
     val episodeKey: String?,
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DetailContent(
     selection: Selection,
@@ -294,30 +310,39 @@ private fun DetailContent(
         }
 
         // e. 选集
+        // FlowRow 自然撑高（不限高），交给外层 Column 的 verticalScroll 滚动，
+        // 避免内层网格固定高度截断导致集数过多时底部看不全
         val episodes = routes.firstOrNull { it.routeKey == selection.routeKey }?.episodes.orEmpty()
         if (episodes.isNotEmpty()) {
             SectionTitle("选集")
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(6),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 1000.dp),
-                userScrollEnabled = false,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                maxItemsInEachRow = 6,
             ) {
-                itemsIndexed(episodes) { index, episode ->
+                val spacing = 8.dp
+                episodes.forEachIndexed { index, episode ->
                     val selected = episode.episodeKey == selection.episodeKey
                     val routeKey = selection.routeKey
                     EpisodeCell(
                         label = (index + 1).toString(),
                         selected = selected,
+                        // 6 列均分：每格占 (总宽 - 5 个间距) / 6，用 weight 实现等分
+                        modifier = Modifier.weight(1f),
                         onClick = {
                             if (routeKey != null) {
                                 onSelectEpisode(selection.sourceKey, routeKey, episode.episodeKey)
                             }
                         },
                     )
+                }
+                // 末行不足 6 个时补空占位，保持每格宽度与满行一致
+                val remainder = episodes.size % 6
+                if (remainder != 0) {
+                    repeat(6 - remainder) {
+                        Spacer(Modifier.weight(1f))
+                    }
                 }
             }
         }
@@ -399,6 +424,7 @@ private fun EpisodeCell(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
     else BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
@@ -406,8 +432,7 @@ private fun EpisodeCell(
         shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
         border = border,
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .clickable(onClick = onClick),
     ) {
         Box(

@@ -8,3 +8,4 @@ keystore.properties
 *.keystore
 signing/
 .kotlin/
+.codegraph/
