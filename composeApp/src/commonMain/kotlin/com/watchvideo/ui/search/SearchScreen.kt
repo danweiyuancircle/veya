@@ -181,7 +181,7 @@ fun SearchScreen(
 
                 HorizontalPager(
                     state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                 ) { page ->
                     val group = groups[page]
                     val tier = tierOf(viewModel.rankValueOf(group.siteKey))
